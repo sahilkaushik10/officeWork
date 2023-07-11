@@ -1,0 +1,291 @@
+// package main
+
+// import (
+//     "database/sql"
+//     "fmt"
+//     "log"
+//     "net/http"
+//     "strconv"
+//     "os"
+
+//     "github.com/gin-contrib/cors"
+//     "github.com/gin-gonic/gin"
+//     _ "github.com/lib/pq"
+// )
+
+// type leaveApplication struct {
+//     ID        int     `form:"id" json:"ID"`
+//     Name      string  `form:"name" json:"Name"`
+//     LeaveType string  `form:"leaveType" json:"LeaveType"`
+//     LeaveFrom  string  `form:"fromDate" json:"LeaveFrom"`
+//     LeaveTo    string  `form:"toDate" json:"LeaveTo"`
+//     Team      string  `form:"team" json:"Team"`
+//     File      *[]byte `form:"file" json:"File"`
+//     Reporter  string  `form:"reporter" json:"Reporter"`
+// }
+
+// var leave_applications = []leaveApplication{
+//     {ID: 1, Name: "Sahil Kaushik", LeaveType: "Casual Leave", LeaveFrom: "2023-05-26", LeaveTo: "2023-05-27", Team: "AWS", Reporter: "Avinashi Sharma"},
+//     {ID: 2, Name: "Km Saloni", LeaveType: "Sick Leave", LeaveFrom: "2023-05-28", LeaveTo: "2023-05-29", Team: "AZURE", Reporter: "Km Saloni"},
+//     {ID: 3, Name: "Avinashi Sharma", LeaveType: "Earned Leave", LeaveFrom: "2023-05-30", LeaveTo: "2023-05-31", Team: "AZURE", Reporter: "Pradeep Kumar"},
+//     {ID: 4, Name: "Pradeep Kumar Bharti", LeaveType: "Casual Leave", LeaveFrom: "2023-06-01", LeaveTo: "2023-06-02", Team: "AZURE", Reporter: "Avinashi Sharma"},
+// }
+
+// func createTrigger() {
+//     _, err := db.Exec(`
+//         DROP TRIGGER IF EXISTS notify_table_update ON my_schema.leave_table;
+//         CREATE TRIGGER notify_table_update
+//         AFTER INSERT ON my_schema.leave_table
+//         FOR EACH ROW
+//         EXECUTE FUNCTION insert_notification();
+//     `)
+
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+// }
+
+// func createFunction() {
+//     var exists bool
+//     err := db.QueryRow(`
+//         SELECT EXISTS (
+//             SELECT 1
+//             FROM pg_proc
+//             WHERE proname = 'insert_notification'
+//         )
+//     `).Scan(&exists)
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+//     if !exists {
+//         _, err = db.Exec(`
+//             CREATE FUNCTION insert_notification() RETURNS TRIGGER AS $$
+//             BEGIN
+//                 INSERT INTO my_schema.notifications (leave_id, reporting_manager, approved)
+//                 VALUES (NEW.id, NEW.reporter, FALSE);
+//                 RETURN NEW;
+//             END;
+//             $$ LANGUAGE plpgsql;
+//         `)
+//         if err != nil {
+//             log.Fatal(err)
+//         }
+
+//         fmt.Println("Function insert_notification created.....")
+//     } else {
+//         fmt.Println("Function insert_notification already exists.....")
+//     }
+// }
+
+
+
+// var db *sql.DB
+
+// func initDB() {
+//     host := os.Getenv("DB_HOST")
+//     port := os.Getenv("DB_PORT")
+//     user := os.Getenv("DB_USER")
+//     password := os.Getenv("DB_PASSWORD")
+//     dbName := os.Getenv("DB_NAME")
+
+//     connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbName)
+
+//     var err error
+
+//     db, err = sql.Open("postgres", connectionString)
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+
+//     err = db.Ping()
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+//     fmt.Println("Connected to the database.....")
+
+
+//     _, err = db.Exec(`CREATE SCHEMA IF NOT EXISTS my_schema`)
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+//     fmt.Println("Schema my_schema created.....")
+
+//     _, err = db.Exec(`CREATE TABLE IF NOT EXISTS my_schema.leave_table (
+//         id SERIAL ,
+//         name VARCHAR(100) NOT NULL,
+//         leave_type VARCHAR(20) NOT NULL,
+//         leave_from VARCHAR(20) NOT NULL ,
+//         leave_to VARCHAR NOT NULL,
+//         team VARCHAR(50) NOT NULL,
+//         file VARCHAR(50),
+//         reporter VARCHAR(100) NOT NULL
+//     )`)
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+//     fmt.Println("You don't have any table named leave_table, so i created one for you....!")
+
+  
+
+
+//     _, err = db.Exec(`CREATE TABLE IF NOT EXISTS my_schema.notifications (
+//         leave_id INT NOT NULL,
+//         reporting_manager VARCHAR(100) NOT NULL,
+//         approved BOOLEAN DEFAULT FALSE
+//     );
+// `)
+//     fmt.Println("notification table created.....");
+
+
+// if err != nil {
+//     log.Fatal(err)
+// }
+
+//     createFunction()
+//     createTrigger()
+// }
+
+
+
+// func getLeaveApplications(c *gin.Context) {
+//     c.IndentedJSON(http.StatusOK, leave_applications)
+//     fmt.Println("GET API is working.....")
+
+// }
+
+
+
+// func postLeaveApplications(c *gin.Context) {
+    
+//     var newLeaveApp leaveApplication
+
+//     if err := c.Bind(&newLeaveApp); err != nil {
+//         return
+//     }
+
+//     newLeaveApp.ID = len(leave_applications) + 1
+
+//     leave_applications = append(leave_applications, newLeaveApp)
+
+    
+//     _, err := db.Exec("INSERT INTO my_schema.leave_table (name, leave_type, leave_from, leave_to, team, file, reporter) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+//         newLeaveApp.Name, newLeaveApp.LeaveType, newLeaveApp.LeaveFrom, newLeaveApp.LeaveTo, newLeaveApp.Team, newLeaveApp.File, newLeaveApp.Reporter)
+//     if err != nil {
+//         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//         return
+//     }
+
+//     c.IndentedJSON(http.StatusCreated, newLeaveApp)
+
+//     c.JSON(http.StatusOK, gin.H{"message": "Leave application submitted successfully"})
+// }
+
+// func getLeaveApplicationByID(c *gin.Context) {
+//     id := c.Param("id")
+
+//     var leaveApp leaveApplication
+//     for _, app := range leave_applications {
+//         if strconv.Itoa(app.ID) == id {
+//             leaveApp = app
+//             break
+//         }
+//     }
+
+//     if leaveApp.ID == 0 {
+//         c.JSON(http.StatusNotFound, gin.H{"error": "Leave application not found"})
+//         return
+//     }
+
+//     c.IndentedJSON(http.StatusOK, leaveApp)
+// }
+
+// func getSavedLeaveApplications(c *gin.Context) {
+//     rows, err := db.Query("SELECT id, name, leave_type, leave_from, leave_to, team ,file, reporter FROM my_schema.leave_table")
+//     if err != nil {
+//         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//         return
+//     }
+//     defer rows.Close()
+
+//     var savedLeaveApps []leaveApplication
+
+//     for rows.Next() {
+//         var leaveApp leaveApplication
+//         err := rows.Scan(&leaveApp.ID, &leaveApp.Name, &leaveApp.LeaveType, &leaveApp.LeaveFrom, &leaveApp.LeaveTo, &leaveApp.Team, &leaveApp.File, &leaveApp.Reporter)
+//         if err != nil {
+//             c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//             return
+//         }
+//         savedLeaveApps = append(savedLeaveApps, leaveApp)
+//     }
+
+//     if err := rows.Err(); err != nil {
+//         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//         return
+//     }
+
+//     c.IndentedJSON(http.StatusOK, savedLeaveApps)
+//     fmt.Println("Data fetched from database successfully......")
+
+// }
+
+// func main() {
+//     os.Setenv("DB_HOST", "localhost")
+//     os.Setenv("DB_PORT", "5432")
+//     os.Setenv("DB_USER", "postgres")
+//     os.Setenv("DB_PASSWORD","sahil@22")
+//     os.Setenv("DB_NAME","my_database")
+
+//     initDB()
+//     defer db.Close()
+
+//     leaveRouter := gin.Default()
+
+//     config := cors.DefaultConfig()
+//     config.AllowAllOrigins = true
+//     leaveRouter.Use(cors.New(config))
+
+//     leaveRouter.GET("/leave-applications", getLeaveApplications)
+//     leaveRouter.POST("/leave-applications", postLeaveApplications)
+//     leaveRouter.GET("/leave-applications/:id", getLeaveApplicationByID)
+//     leaveRouter.GET("/saved-leave-applications", getSavedLeaveApplications)
+//     leaveRouter.Run(":8000")
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // content, err := ioutil.ReadFile("ddl.sql")
+    // if err != nil {
+    //     log.Fatal(err)
+    // }
+
+    // statements := strings.Split(string(content), ";")
+
+    // for _, statement := range statements {
+    //     if _, err := db.Exec(strings.TrimSpace(statement)); err != nil {
+    //         log.Fatal(err)
+    //     }
+    // }
+
+    // fmt.Println("DDL statements executed successfully.")
